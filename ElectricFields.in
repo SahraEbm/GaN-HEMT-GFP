@@ -1,0 +1,188 @@
+#****************************************************************************
+#Project : AlGaN/GaN HEMT with Gate Field Plate (GFP)
+#
+#File : electricfield.in
+#
+#Silvaco ATLAS
+#
+#Version : 1.0.0
+#
+#Release : 2026-06-19
+#
+# Authors :    Sahra Ebrahimmagham ( M.S, Grad, AUT)
+#                  Majid Shalchian ( Assistant Professor, AUT)
+#
+#Affiliation: Amirkabir University of Technology (AUT)
+#
+# ******************************************************************************
+#
+#Description:
+#Electric field analysis of an AlGaN/GaN HEMT with
+#gate field plate under various VGS and VDS bias
+#conditions.
+# ******************************************************************************
+#
+# ******************************************************************************
+#
+#This deck:
+#1. Loads the pre-generated device structure
+#2. Enables physical models
+#3. Defines electric-field probe locations
+#4. Performs:
+#- E-field vs VGS at fixed VDS
+#- E-field vs VDS at fixed VGS
+#5. Saves log and structure files
+#
+# ******************************************************************************
+#
+#Required Input:
+#algan_gan_hemt_gfp_v1.str
+#
+#Length unit : um
+#Doping unit : cm^-3
+#Voltage unit: V
+#****************************************************************************
+#
+go atlas
+#
+#****************************************************************************
+#Load Device Structure
+#****************************************************************************
+mesh infile=algan_gan_hemt_gfp_v1.str
+#
+#****************************************************************************
+#
+#Device Geometry Parameters
+#(Must match hemt_gfp_structure.in)
+#****************************************************************************
+#
+#set device thicknesses
+set nitride_thickness_um = 0.030
+set algan_thickness_um = 0.020
+#Set Device Length
+set source_length_um = 0.0
+set source_gate_spacing_um = 0.1
+set gate_length_um = 1.0
+set field_plate_length_um = 2.0
+set gate_drain_spacing_um = 0.1
+set drain_length_um = 0.0
+set total_device_length_um = $source_length_um + $source_gate_spacing_um + $gate_length_um + $field_plate_length_um + $gate_drain_spacing_um + $drain_length_um
+#
+#****************************************************************************
+#
+#Derived Coordinates
+#
+#****************************************************************************
+#
+set y_2deg_um = $nitride_thickness_um + $algan_thickness_um
+set x_gate_source_edge_um = $source_length_um + $source_gate_spacing_um
+set x_gate_drain_edge_um = $source_length_um + $source_gate_spacing_um + $gate_length_um
+set x_field_plate_edge_um =$source_length_um +$source_gate_spacing_um +$gate_length_um +$field_plate_length_um
+set x_drain_edge_um =$total_device_length_um - $drain_length_um
+set x_gate_drain_mid_um =($x_field_plate_edge_um + $x_drain_edge_um) / 2
+#
+#****************************************************************************
+#
+#Bias Sweep Parameters
+#
+#****************************************************************************
+#
+set gate_voltage_start_v = -12
+set gate_voltage_stop_v = 2
+set gate_voltage_step_v = 0.2
+set drain_voltage_max_v = 50
+set drain_voltage_step_v = 0.5
+#
+#****************************************************************************
+#
+#Physical Models
+#
+#****************************************************************************
+#
+#material material=AlGaN polarization calc.strain polar.scale=0.8
+#
+models print k.p fermi
+#
+contact name=gate workfun=3.5
+contact name=source workfun=4.13
+contact name=drain workfun=4.13
+#
+output e.field ex.field ey.field e.velocity e.mobility j.electron j.conduc j.total con.band qfn qss flowlines
+#
+method newton trap maxtrap=20
+#
+#****************************************************************************
+#
+#Initial Solution
+#
+#****************************************************************************
+#
+solve init
+#
+save outfile=initial_solution.str
+#
+#****************************************************************************
+#
+#Electric Field Probes
+#
+#****************************************************************************
+#
+probe name=Ey_gate_source x=$x_gate_source_edge_um y=$y_2deg_um field dir=90
+probe name=Ey_gate_drain x=$x_gate_drain_edge_um y=$y_2deg_um field dir=90
+probe name=Ey_field_plate x=$x_field_plate_edge_um y=$y_2deg_um field dir=90
+probe name=Ey_gate_drain_mid x=$x_gate_drain_mid_um y=$y_2deg_um field dir=90
+probe name=Ex_gate_source x=$x_gate_source_edge_um y=$y_2deg_um field dir=0
+probe name=Ex_gate_drain x=$x_gate_drain_edge_um y=$y_2deg_um field dir=0
+
+probe name=Ex_field_plate x=$x_field_plate_edge_um y=$y_2deg_um field dir=0
+probe name=Ex_gate_drain_mid x=$x_gate_drain_mid_um y=$y_2deg_um field dir=0
+#
+#****************************************************************************
+#
+#Study 1
+#Electric Field vs VGS for Various VDS
+#VDS = 0, 1, 10, 50 V
+#
+#****************************************************************************
+#
+loop steps=4
+
+assign name=drain_bias_v n.value=(0,1,10,50)
+solve init
+solve vdrain=$drain_bias_v
+log outfile="efield_vs_vgs_vds_$'drain_bias_v'V.log"
+solve vgate=$gate_voltage_start_v
+solve name=gate vstep=$gate_voltage_step_v vfinal=$gate_voltage_stop_v
+save outfile="vgs_sweep_vds_$'drain_bias_v'V.str"
+log off
+l.end
+#
+#****************************************************************************
+#
+#Study 2
+#Electric Field vs VDS for Various VGS
+#VGS = -6, -3, 0, 2 V
+#
+#****************************************************************************
+#
+loop steps=4
+assign name=gate_bias_v  n.value=(-6,-3,0,2)
+solve init
+solve vgate=$gate_bias_v
+log outfile="efield_vs_vds_vgs_$'gate_bias_v'V.log"
+solve name=drain vstep=$drain_voltage_step_v vfinal=$drain_voltage_max_v
+save outfile="vds_sweep_vgs_$'gate_bias_v'V.str"
+log off
+l.end
+#
+#****************************************************************************
+#
+#Example TonyPlot Commands
+#
+#****************************************************************************
+#
+tonyplot efield_vs_vgs_vds_0V.log
+tonyplot efield_vs_vgs_vds_50V.log
+tonyplot efield_vs_vds_vgs_0V.log
+tonyplot efield_vs_vds_vgs_2V.log
+quit

@@ -1,0 +1,142 @@
+# ******************************************************************************
+# Project :      AlGaN/GaN HEMT with Gate Field Plate 
+#
+# Baseline geometry definition for an AlGaN/GaN HEMT
+# featuring a gate-connected field plate.
+#
+#Silvaco Atlas
+#
+#Version : 1.0.0
+#
+#Release : 2026-06-19
+#
+# Authors :    Sahra Ebrahimmagham ( M.S, Grad, AUT)
+#                  Majid Shalchian ( Assistant Professor, AUT)
+#
+#Affiliation: Amirkabir University of Technology (AUT)
+#
+# ******************************************************************************
+# ******************************************************************************
+go atlas
+# ******************************************************************************
+# Unit Conventions
+# ******************************************************************************
+# Length         : um
+# Doping          : cm^-3
+# Aluminum mole fraction : dimensionless
+# ==========================================================
+
+# ==========================================================
+
+# Device Geometry Parameters
+
+# ==========================================================
+
+set oxide_thickness_um             = 0.00
+set nitride_thickness_um           = 0.030
+set algan_thickness_um             = 0.020
+set channel_thickness_um           = $algan_thickness_um * 5
+set gan_buffer_thickness_um        = 2.4
+set sic_substrate_thickness_um     = 0.0
+
+# Aluminum composition in AlGaN
+
+set aluminum_fraction              = 0.30
+
+# ==========================================================
+
+# Derived Vertical Coordinates
+
+# ==========================================================
+
+set y_surface_um                   = 0.0
+set y_nitride_bottom_um            = $nitride_thickness_um
+set y_algan_bottom_um              = $nitride_thickness_um + $algan_thickness_um
+set y_channel_bottom_um            = $nitride_thickness_um + $algan_thickness_um + $channel_thickness_um
+set y_gan_bottom_um                = $nitride_thickness_um + $algan_thickness_um + $gan_buffer_thickness_um
+set y_substrate_bottom_um          = $nitride_thickness_um + $algan_thickness_um + $gan_buffer_thickness_um + $sic_substrate_thickness_um
+
+# ==========================================================
+
+# Lateral Dimensions
+
+# ==========================================================
+
+# Source and drain lengths are set to zero to model
+
+# edge contacts.
+
+set source_length_um              = 0.0
+set source_gate_spacing_um     = 0.1
+set gate_length_um                = 1.0
+set field_plate_length_um        = 2.0
+set gate_drain_spacing_um      = 0.1
+set drain_length_um               = 0.0
+set total_device_length_um     = $source_length_um + $source_gate_spacing_um + $gate_length_um + $field_plate_length_um + $gate_drain_spacing_um +$drain_length_um
+
+# ==========================================================
+
+# Doping Parameters
+
+# ==========================================================
+
+set algan_doping_m3               = 3e14
+set gan_doping_m3                 = 4e15
+
+# ==========================================================
+
+# Mesh Definition
+
+# ==========================================================
+#
+mesh outfile=algan_gan_hemt_gfp_v1.str
+#
+x.m l=0.0                                s=0.1
+x.m l=$total_device_length_um   s=0.1
+#
+y.m l=$y_surface_um                 s=0.005
+y.m l=$y_nitride_bottom_um       s=0.005
+y.m l=$y_algan_bottom_um        s=0.005
+y.m l=$y_channel_bottom_um      s=0.005
+y.m l=$y_gan_bottom_um           s=0.2
+
+# ==========================================================
+
+# Region Definition
+
+# ==========================================================
+#
+region num=1 y.max=$y_gan_bottom_um    mat=GaN
+#
+region num=2 y.max=$y_algan_bottom_um  mat=AlGaN   x.comp=$aluminum_fraction
+#
+region num=3 y.max=$y_nitride_bottom_um mat=nitride   insulator
+# ==========================================================
+
+# Electrode Definition
+
+# ==========================================================
+
+elec num=1 name=source  x.min=0   x.max=$source_length_um  y.min=$y_nitride_bottom_um  y.max=$y_algan_bottom_um + 2 * $algan_thickness_um
+#
+elec num=2 name=drain  x.min=$total_device_length_um - $drain_length_um  x.max=$total_device_length_um  y.min=$y_nitride_bottom_um  y.max=$y_algan_bottom_um + 2 * $algan_thickness_um
+
+# Gate field plate
+
+elec num=3 name=gate  x.min=$source_length_um + $source_gate_spacing_um + $gate_length_um  x.max=$source_length_um + $source_gate_spacing_um + $gate_length_um + $field_plate_length_um  y.min=$y_surface_um  y.max=$y_surface_um
+
+# Gate metal
+
+elec num=4 name=gate x.min=$source_length_um + $source_gate_spacing_um  x.max=$source_length_um + $source_gate_spacing_um + $gate_length_um  y.min=$y_nitride_bottom_um  y.max=$y_nitride_bottom_um
+
+# ==========================================================
+
+# Doping Definition
+
+# ==========================================================
+
+doping uniform  x.min=0  x.max=$total_device_length_um  y.min=$y_nitride_bottom_um  y.max=$y_algan_bottom_um n.type conc=$algan_doping_m3
+
+doping uniform x.min=0 x.max=$total_device_length_um y.min=$y_algan_bottom_um  y.max=$y_gan_bottom_um p.type conc=$gan_doping_m3
+
+quit

@@ -1,0 +1,223 @@
+# ==========================================================
+# Project    : AlGaN/GaN HEMT with Gate Field Plate (GFP)
+# File       : surface_potential.in
+#
+#Silvaco ATLAS
+#
+#Version : 1.0.0
+#
+#Release : 2026-06-19
+#
+# Authors :    Sahra Ebrahimmagham ( M.S, Grad, AUT)
+#                  Majid Shalchian ( Assistant Professor, AUT)
+#
+#Affiliation: Amirkabir University of Technology (AUT)
+#
+# ******************************************************************************
+#
+# ******************************************************************************
+#
+#This deck:
+#1. Loads the pre-generated device structure
+#2. Enables physical models
+#3. Defines Surface Potential probe locations
+#4. Performs:
+#- Surface Potential vs VGS at fixed VDS
+#- face Potential vs VDS at fixed VGS
+#5. Saves log and structure files
+#
+# Description:
+# Surface potential analysis at critical device locations:
+#
+#   P1 : Middle of source access region
+#   P2 : Field-plate edge
+#   P3 : Middle of drain access region
+#
+# Analyses:
+#   1. Surface potential vs VGS for VDS = 0, 1, 10, 50 V
+#   2. Surface potential vs VDS for VGS = -6, -3, 0, 2 V
+#
+# ******************************************************************************
+#
+#Required Input:
+#algan_gan_hemt_gfp_v1.str
+#
+#Length unit : um
+#Doping unit : cm^-3
+#Voltage unit: V
+#****************************************************************************
+go atlas
+
+# ==========================================================
+# Load Structure
+# ==========================================================
+
+mesh infile=algan_gan_hemt_gfp_v1.str 
+
+# ==========================================================
+# Geometry Parameters
+# (Must match structure deck)
+# ==========================================================
+
+set nitride_thickness_um    = 0.030
+set algan_thickness_um      = 0.020
+
+set source_length_um        = 0.0
+set source_gate_spacing_um  = 0.1
+
+set gate_length_um          = 1.0
+set field_plate_length_um   = 2.0
+
+set gate_drain_spacing_um   = 0.1
+set drain_length_um         = 0.0
+
+set total_device_length_um = \
+    $source_length_um + \
+    $source_gate_spacing_um + \
+    $gate_length_um + \
+    $field_plate_length_um + \
+    $gate_drain_spacing_um + \
+    $drain_length_um
+
+# ==========================================================
+# Derived Probe Coordinates
+# ==========================================================
+
+# AlGaN/GaN interface (2DEG position)
+
+set y_surface_um = \
+    $nitride_thickness_um + $algan_thickness_um
+
+# Source access region center
+
+set x_source_access_mid_um = \
+    $source_length_um + $source_gate_spacing_um / 2
+
+# Field-plate edge
+
+set x_field_plate_edge_um = \
+    $source_length_um + \
+    $source_gate_spacing_um + \
+    $gate_length_um + \
+    $field_plate_length_um
+
+# Drain access region center
+
+set x_drain_access_mid_um = \
+    $x_field_plate_edge_um + \
+    $gate_drain_spacing_um / 2
+
+# ==========================================================
+# Bias Parameters
+# ==========================================================
+
+set gate_voltage_start_v = -12
+set gate_voltage_stop_v  = 2
+set gate_voltage_step_v  = 0.5
+
+set drain_voltage_max_v  = 50
+set drain_voltage_step_v = 1
+
+# ==========================================================
+# Physical Models
+# ==========================================================
+
+
+models print k.p fermi
+
+contact name=gate   workfun=3.5
+contact name=source workfun=4.13
+contact name=drain  workfun=4.13
+
+method newton trap maxtrap=20
+
+# ==========================================================
+# Output Variables
+# ==========================================================
+
+#output potential con.band qfn
+
+# ==========================================================
+# Surface Potential Probes
+# ==========================================================
+
+probe name=psi_source_access \
+      x=$x_source_access_mid_um \
+      y=$y_surface_um \
+      potential
+
+probe name=psi_field_plate_edge \
+      x=$x_field_plate_edge_um \
+      y=$y_surface_um \
+      potential
+
+probe name=psi_drain_access \
+      x=$x_drain_access_mid_um \
+      y=$y_surface_um \
+      potential
+
+# ==========================================================
+# Initial Solution
+# ==========================================================
+
+solve init
+
+save outfile=surface_potential_init.str
+
+# ==========================================================
+# STUDY 1
+# Surface Potential vs VGS
+# VDS = 0, 1, 10, 50 V
+# ==========================================================
+
+loop steps=4
+
+assign name=drain_bias_v \
+       n.value=(0,1,10,50)
+
+solve init
+
+solve vdrain=$drain_bias_v
+
+log outfile="psi_vs_vgs_vds_$'drain_bias_v'V.log"
+
+solve vgate=$gate_voltage_start_v
+
+solve name=gate \
+      vstep=$gate_voltage_step_v \
+      vfinal=$gate_voltage_stop_v
+
+save outfile="psi_vgs_vds_$'drain_bias_v'V.str"
+
+log off
+
+l.end
+
+# ==========================================================
+# STUDY 2
+# Surface Potential vs VDS
+# VGS = -6, -3, 0, 2 V
+# ==========================================================
+
+loop steps=4
+
+assign name=gate_bias_v \
+       n.value=(-6,-3,0,2)
+
+solve init
+
+solve vgate=$gate_bias_v
+
+log outfile="psi_vs_vds_vgs_$'gate_bias_v'V.log"
+
+solve name=drain \
+      vstep=$drain_voltage_step_v \
+      vfinal=$drain_voltage_max_v
+
+save outfile="psi_vds_vgs_$'gate_bias_v'V.str"
+
+log off
+
+l.end
+
+quit
